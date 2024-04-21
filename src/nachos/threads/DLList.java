@@ -6,6 +6,23 @@ public class DLList
     private DLLElement last;   // pointer to last node
     private int size;          // number of nodes in list
 
+    // project 1 instance vars
+    // fatal error interleaving
+    static boolean[][] yieldData = {
+        {true,false},
+        {true,false}
+    };
+    static int[] yieldCount = {0,0};
+
+    // non fatal error interleaving
+    // static boolean[][] yieldData = {
+    //     {false},
+    //     {false},
+    //     {true}
+    // };
+    // static int[] yieldCount = {0,0,0};
+
+
     /**
      * Creates an empty sorted doubly-linked list.
      */ 
@@ -14,6 +31,28 @@ public class DLList
         last = null;
         size = 0;
     }
+
+    /**
+    * Given this unique location, yield the
+    * current thread if it ought to.  It knows
+    * to do this if yieldData[i][loc] is true, where
+    * i is the number of times that this function
+    * has already been called from this location.
+    *
+    * @param loc  unique location. Every call to
+    *             yieldIfShould that you
+    *             place in your DLList code should
+    *             have a different loc number.
+    */
+    public static void yieldIfShould(int loc) {
+        if (yieldData[loc][yieldCount[loc]]) {
+            yieldCount[loc] += 1;
+            KThread.currentThread().yield();
+        } else {
+            yieldCount[loc] += 1;
+        }
+    }
+
 
     /**
      * Add item to the head of the list, setting the key for the new
@@ -47,12 +86,19 @@ public class DLList
             return null;
         } else {
             Object toReturn = first.data;
+
+            this.yieldIfShould(0);
+
             first = first.next;
+
+            this.yieldIfShould(1);
+
             size -= 1;
 
             if (!isEmpty()) {
                 first.prev = null;
             } else {
+                this.yieldIfShould(2);
                 last = null;
             }
             return toReturn;
@@ -158,6 +204,14 @@ public class DLList
             toReturn += ")";
             return toReturn;
         }
+    }
+    
+    public String getFirst() {
+        return first + "";
+    }
+
+    public String getLast() {
+        return last + "";
     }
 
     /**

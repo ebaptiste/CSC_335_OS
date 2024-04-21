@@ -28,6 +28,15 @@ import nachos.machine.*;
  * </pre></blockquote>
  */
 public class KThread {
+
+    // instance variables
+
+    static int numTimesBefore = 0;
+    // part 1: ascending numbers interleaving
+    //static boolean[] oughtToYield = {true,true,true,true,true,true,true,true,true,true,true,true};
+    // part 1: a's and b's grouped by 2's
+    static boolean[] oughtToYield = {false,true,false,true,false,true,false,true,false,true,false,true};
+    
     /**
      * Get the current thread.
      *
@@ -228,6 +237,21 @@ public class KThread {
     }
 
     /**
+     * 
+     */
+    public static void yieldIfOughtTo() {
+        //System.out.println("checking yield " + String.valueOf(numTimesBefore));
+        if (oughtToYield[numTimesBefore]) {
+            numTimesBefore += 1;
+            currentThread.yield();
+        } else {
+            numTimesBefore += 1;
+        }
+        
+        //System.out.println("incrementing count " + String.valueOf(numTimesBefore));
+    }
+
+    /**
      * Relinquish the CPU, because the current thread has either finished or it
      * is blocked. This thread must be the current thread.
      *
@@ -397,6 +421,103 @@ public class KThread {
 	private int which;
     }
 
+    private static class DLListTest implements Runnable {
+        public static DLList myDLL = new DLList();
+
+        DLListTest(int which) {
+            this.which = which;
+        }
+        
+        public void run() {
+            if (this.which == 0) {
+                this.countDown("A",12,2,2);
+            } else {
+                this.countDown("B", 11, 1, 2);
+            }
+            
+        }
+
+        /**
+        * Prepends multiple nodes to a shared doubly-linked list. For each
+        * integer in the range from...to (inclusive), make a string
+        * concatenating label with the integer, and prepend a new node
+        * containing that data (that's data, not key). For example,
+        * countDown("A",8,6,1) means prepend three nodes with the data
+        * "A8", "A7", and "A6" respectively. countDown("X",10,2,3) will
+        * also prepend three nodes with "X10", "X7", and "X4".
+        *
+        * This method should conditionally yield after each node is inserted.
+        * Print the list at the very end.
+        *
+        * Preconditions: from>=to and step>0
+        *
+        * @param label string that node data should start with
+        * @param from integer to start at
+        * @param to integer to end at
+        * @param step subtract this from the current integer to get to the next integer */
+        public void countDown(String label, int from, int to, int step) {
+            for (int i=from; i >= (to); i=i-step) {
+                String numString = String.valueOf(i);
+                System.out.println("prepending "+ label + numString);
+                DLListTest.myDLL.prepend(label+numString);
+
+                currentThread.yieldIfOughtTo();
+            }
+            System.out.println("prepend complete" + DLListTest.myDLL);
+            
+        }
+    
+        private int which;
+        }
+
+        private static class FatalErrorTest implements Runnable {
+            public static DLList myDLL = new DLList();
+
+            FatalErrorTest(int which) {
+                this.which = which;
+            }
+            
+            public void run() {
+                if (this.which == 0) {
+                    myDLL.prepend(1);
+                    myDLL.removeHead();
+                } else {
+                    myDLL.removeHead();
+                }
+
+                System.out.println("Final list: " + myDLL);
+                
+            }
+        
+            private int which;
+            }
+
+        private static class NonFatalErrorTest implements Runnable {
+            public static DLList myDLL = new DLList();
+
+            NonFatalErrorTest(int which) {
+                this.which = which;
+            }
+            
+            public void run() {
+                if (this.which == 0) {
+                    myDLL.prepend(1);
+                    myDLL.removeHead();
+                    
+                    System.out.println("Final list: " + myDLL);
+                    System.out.println("First: " + myDLL.getFirst());
+                    System.out.println("Last: " + myDLL.getLast());
+                } else {
+                    myDLL.prepend(2);
+                }
+
+
+
+            }
+        
+            private int which;
+            }
+
     /**
      * Tests whether this module is working.
      */
@@ -405,6 +526,40 @@ public class KThread {
 	
 	new KThread(new PingTest(1)).setName("forked thread").fork();
 	new PingTest(0).run();
+    }
+
+    /**
+    * Tests the shared DLList by having two threads running countdown.
+    * One thread will insert even-numbered data from "A12" to "A2".
+    * The other thread will insert odd-numbered data from "B11" to "B1". * Don't forget to initialize the oughtToYield array before forking. *
+    */
+    public static void DLL_selfTest(){
+        Lib.debug(dbgThread, "Enter KThread.DLL_selfTest");
+	
+        new KThread(new DLListTest(1)).setName("forked thread").fork();
+        new DLListTest(0).run();
+        
+    }
+
+    /**
+    * Creates fatal error interleaving using DLList
+    */
+    public static void DLL_fatalError(){
+        Lib.debug(dbgThread, "Enter KThread.DLL_fatalError");
+	
+        new KThread(new FatalErrorTest(1)).setName("forked thread").fork();
+        new FatalErrorTest(0).run();
+        
+    }
+
+    /**
+    * Creates non fatal error interleaving using DLList
+    */
+    public static void DLL_nonFatalError(){
+        Lib.debug(dbgThread, "Enter KThread.DLL_nonFatalError");
+	
+        new KThread(new NonFatalErrorTest(1)).setName("forked thread").fork();
+        new NonFatalErrorTest(0).run();
     }
 
     private static final char dbgThread = 't';
