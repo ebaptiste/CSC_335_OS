@@ -504,12 +504,13 @@ public class KThread {
                     myDLL.prepend(1);
                     myDLL.removeHead();
                     
-                    System.out.println("Final list: " + myDLL);
-                    System.out.println("First: " + myDLL.getFirst());
-                    System.out.println("Last: " + myDLL.getLast());
                 } else {
                     myDLL.prepend(2);
                 }
+
+                System.out.println("Final list: " + myDLL);
+                System.out.println("First: " + myDLL.getFirst());
+                System.out.println("Last: " + myDLL.getLast() + "\n");
 
 
 

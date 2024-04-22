@@ -7,6 +7,7 @@ public class DLList
     private int size;          // number of nodes in list
 
     // project 1 instance vars
+    
     // fatal error interleaving
     static boolean[][] yieldData = {
         {true,false},
