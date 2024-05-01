@@ -36,7 +36,11 @@ public class KThread {
     //static boolean[] oughtToYield = {true,true,true,true,true,true,true,true,true,true,true,true};
     // part 1: a's and b's grouped by 2's
     static boolean[] oughtToYield = {false,true,false,true,false,true,false,true,false,true,false,true};
-    
+
+    // interleaving yield variables
+    static boolean[][] yieldData;
+    static int[] yieldCount;
+
     /**
      * Get the current thread.
      *
@@ -249,6 +253,27 @@ public class KThread {
         }
         
         //System.out.println("incrementing count " + String.valueOf(numTimesBefore));
+    }
+
+    /**
+    * Given this unique location, yield the
+    * current thread if it ought to.  It knows
+    * to do this if yieldData[i][loc] is true, where
+    * i is the number of times that this function
+    * has already been called from this location.
+    *
+    * @param loc  unique location. Every call to
+    *             yieldIfShould that you
+    *             place in your DLList code should
+    *             have a different loc number.
+    */
+    public static void yieldIfShould(int loc) {
+        if (KThread.yieldData[loc][KThread.yieldCount[loc]]) {
+            KThread.yieldCount[loc] += 1;
+            currentThread.yield();
+        } else {
+            KThread.yieldCount[loc] += 1;
+        }
     }
 
     /**
@@ -547,6 +572,14 @@ public class KThread {
     */
     public static void DLL_fatalError(){
         Lib.debug(dbgThread, "Enter KThread.DLL_fatalError");
+
+        boolean[][] newYieldData = {
+            {true,false},
+            {true,false}
+        };
+        KThread.yieldData = newYieldData;
+        int[] newYieldCount = {0,0};
+        KThread.yieldCount = newYieldCount;
 	
         new KThread(new FatalErrorTest(1)).setName("forked thread").fork();
         new FatalErrorTest(0).run();
@@ -558,7 +591,16 @@ public class KThread {
     */
     public static void DLL_nonFatalError(){
         Lib.debug(dbgThread, "Enter KThread.DLL_nonFatalError");
-	
+
+        boolean[][] newYieldData = {
+            {false},
+            {false},
+            {true}
+        };
+        KThread.yieldData = newYieldData;
+        int[] newYieldCount = {0,0,0};
+        KThread.yieldCount = newYieldCount;
+
         new KThread(new NonFatalErrorTest(1)).setName("forked thread").fork();
         new NonFatalErrorTest(0).run();
     }
