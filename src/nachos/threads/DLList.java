@@ -6,7 +6,7 @@ public class DLList
     private DLLElement last;   // pointer to last node
     private int size;          // number of nodes in list
     private Lock lock;         // class lock object
-    private Condition fullList; // condition var to check when list has contents
+    private Condition2 fullList; // Condition2 var to check when list has contents
 
 
     /**
@@ -14,7 +14,7 @@ public class DLList
      */ 
     public DLList() {
         lock = new Lock();
-        fullList = new Condition(lock);
+        fullList = new Condition2(lock);
         first = null;
         last = null;
         size = 0;
