@@ -5,12 +5,16 @@ public class DLList
     private DLLElement first;  // pointer to first node
     private DLLElement last;   // pointer to last node
     private int size;          // number of nodes in list
+    private Lock lock;         // class lock object
+    private Condition fullList; // condition var to check when list has contents
 
 
     /**
      * Creates an empty sorted doubly-linked list.
      */ 
     public DLList() {
+        lock = new Lock();
+        fullList = new Condition(lock);
         first = null;
         last = null;
         size = 0;
@@ -26,6 +30,8 @@ public class DLList
      */
     public void prepend(Object item) {
         DLLElement newNode;
+
+        lock.acquire();
         if (isEmpty()) {
             newNode = new DLLElement(item, 0);
             last = newNode;
@@ -37,6 +43,9 @@ public class DLList
 
         first = newNode;
         size += 1;
+
+        fullList.wake();
+        lock.release();
     }
 
     /**
@@ -46,29 +55,34 @@ public class DLList
      * @return the data stored at the head of the list or null if list empty
      */
     public Object removeHead() {
-        if (isEmpty()) {
-            return null;
-        } else {
-            Object toReturn = first.data;
+        lock.acquire();
 
-            KThread.yieldIfShould(0);
-
-            first = first.next;
-
-            KThread.yieldIfShould(1);
-
-            size -= 1;
-
-            if (!isEmpty()) {
-                first.prev = null;
-            } else {
-                KThread.yieldIfShould(2);
-                last = null;
-            }
-            return toReturn;
+        while (isEmpty()) {
+            fullList.sleep();
         }
 
+        Object toReturn = first.data;
+
+        KThread.yieldIfShould(0);
+
+        first = first.next;
+
+        KThread.yieldIfShould(1);
+
+        size -= 1;
+
+        if (!isEmpty()) {
+            first.prev = null;
+        } else {
+            KThread.yieldIfShould(2);
+            last = null;
+        }
+
+        lock.release();
+
+        return toReturn;
         
+
     }
 
     /**
@@ -77,7 +91,15 @@ public class DLList
      * @return true iff the list is empty.
      */
     public boolean isEmpty() {
-        return first == null;
+        if (lock.isHeldByCurrentThread()) {
+            return first == null;
+        }
+ 
+        lock.acquire();
+        Boolean emptyBool = first == null;
+        lock.release();
+
+        return emptyBool;
     }
 
     /**
@@ -85,7 +107,11 @@ public class DLList
      * @return
      */
     public int size() {
-        return size;
+        lock.acquire();
+        int currSize = size;
+        lock.release();
+
+        return currSize;
     }
 
 
@@ -94,6 +120,8 @@ public class DLList
      */
     public void insert(Object item, Integer sortKey) {
         DLLElement newNode = new DLLElement(item, sortKey);
+
+        lock.acquire();
         if (isEmpty()) {
             last = newNode;
             first = newNode;
@@ -126,6 +154,9 @@ public class DLList
 
         size += 1;
 
+        fullList.wake();
+        lock.release();
+
     }
 
 
@@ -135,7 +166,10 @@ public class DLList
      * @return list elements in order
      */
     public String toString() {
+        lock.acquire();
+
         if (isEmpty()) {
+            lock.release();
             return "()";
         } else {
             String toReturn = "(" + first.toString();
@@ -145,8 +179,12 @@ public class DLList
                 currNode = currNode.next;
             }
             toReturn += ")";
+            lock.release();
+
             return toReturn;
         }
+
+        
 
     }
 
@@ -156,7 +194,10 @@ public class DLList
      * @return list elements in backwards order
      */
     public String reverseToString(){
+        lock.acquire();
+
         if (isEmpty()) {
+            lock.release();
             return "()";
         } else {
             String toReturn = "(" + last.toString();
@@ -166,16 +207,26 @@ public class DLList
                 currNode = currNode.prev;
             }
             toReturn += ")";
+
+            lock.release();
             return toReturn;
         }
     }
     
     public String getFirst() {
-        return first + "";
+        lock.acquire();
+        String currFirst = first + "";
+        lock.release();
+
+        return currFirst;
     }
 
     public String getLast() {
-        return last + "";
+        lock.acquire();
+        String currLast = last + "";
+        lock.release();
+        
+        return currLast;
     }
 
     /**
