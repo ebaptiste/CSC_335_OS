@@ -36,7 +36,11 @@ public class KThread {
     //static boolean[] oughtToYield = {true,true,true,true,true,true,true,true,true,true,true,true};
     // part 1: a's and b's grouped by 2's
     static boolean[] oughtToYield = {false,true,false,true,false,true,false,true,false,true,false,true};
-    
+
+    // interleaving yield variables
+    static boolean[][] yieldData;
+    static int[] yieldCount;
+
     /**
      * Get the current thread.
      *
@@ -249,6 +253,27 @@ public class KThread {
         }
         
         //System.out.println("incrementing count " + String.valueOf(numTimesBefore));
+    }
+
+    /**
+    * Given this unique location, yield the
+    * current thread if it ought to.  It knows
+    * to do this if yieldData[i][loc] is true, where
+    * i is the number of times that this function
+    * has already been called from this location.
+    *
+    * @param loc  unique location. Every call to
+    *             yieldIfShould that you
+    *             place in your DLList code should
+    *             have a different loc number.
+    */
+    public static void yieldIfShould(int loc) {
+        if (KThread.yieldData[loc][KThread.yieldCount[loc]]) {
+            KThread.yieldCount[loc] += 1;
+            currentThread.yield();
+        } else {
+            KThread.yieldCount[loc] += 1;
+        }
     }
 
     /**
@@ -470,10 +495,10 @@ public class KThread {
         private int which;
         }
 
-        private static class FatalErrorTest implements Runnable {
+        private static class DLLFatalErrorTest implements Runnable {
             public static DLList myDLL = new DLList();
 
-            FatalErrorTest(int which) {
+            DLLFatalErrorTest(int which) {
                 this.which = which;
             }
             
@@ -486,16 +511,18 @@ public class KThread {
                 }
 
                 System.out.println("Final list: " + myDLL);
+                System.out.println("First: " + myDLL.getFirst());
+                System.out.println("Last: " + myDLL.getLast() + "\n");
                 
             }
         
             private int which;
-            }
+        }
 
-        private static class NonFatalErrorTest implements Runnable {
+        private static class DLLNonFatalErrorTest implements Runnable {
             public static DLList myDLL = new DLList();
 
-            NonFatalErrorTest(int which) {
+            DLLNonFatalErrorTest(int which) {
                 this.which = which;
             }
             
@@ -517,7 +544,80 @@ public class KThread {
             }
         
             private int which;
+        }
+
+
+        private static class BBufferMutualExclusionTest implements Runnable {
+            public static BoundedBuffer myBB = new BoundedBuffer(2);
+
+            BBufferMutualExclusionTest(int which) {
+                this.which = which;
             }
+            
+            public void run() {
+                if (this.which == 0) {
+                    myBB.write('a');
+                } else {
+                    myBB.write('b');
+                }
+
+                System.out.println("Final buffer:");
+                myBB.print();
+                
+            }
+        
+            private int which;
+        }
+
+        private static class BBufferUnderflowTest implements Runnable {
+            public static BoundedBuffer myBB = new BoundedBuffer(2);
+
+            BBufferUnderflowTest(int which) {
+                this.which = which;
+            }
+            
+            public void run() {
+                if (this.which == 0) {
+                    char c = myBB.read();
+                    System.out.println("Final return char: " + c);
+                } else {
+                    myBB.write('a');
+                }
+  
+            }
+
+            private int which;
+        }
+
+        private static class BBufferOverflowTest implements Runnable {
+            public static BoundedBuffer myBB = new BoundedBuffer(2);
+
+            BBufferOverflowTest(int which) {
+                this.which = which;
+            }
+            
+            public void run() {
+                if (this.which == 0) {
+                    myBB.write('a');
+                    myBB.write('b');
+                    myBB.write('c');
+                    System.out.println("Final buffer:");
+                    myBB.print();
+
+                } else {
+                    char c = myBB.read();
+                    System.out.println("Final return char: " + c);
+                }
+
+                
+
+                
+
+                
+            }
+
+            private int which;
+        }
 
     /**
      * Tests whether this module is working.
@@ -547,9 +647,18 @@ public class KThread {
     */
     public static void DLL_fatalError(){
         Lib.debug(dbgThread, "Enter KThread.DLL_fatalError");
+
+        boolean[][] newYieldData = {
+            {true,false},
+            {true,false},
+            {false}
+        };
+        KThread.yieldData = newYieldData;
+        int[] newYieldCount = {0,0,0};
+        KThread.yieldCount = newYieldCount;
 	
-        new KThread(new FatalErrorTest(1)).setName("forked thread").fork();
-        new FatalErrorTest(0).run();
+        new KThread(new DLLFatalErrorTest(1)).setName("forked thread").fork();
+        new DLLFatalErrorTest(0).run();
         
     }
 
@@ -558,9 +667,69 @@ public class KThread {
     */
     public static void DLL_nonFatalError(){
         Lib.debug(dbgThread, "Enter KThread.DLL_nonFatalError");
-	
-        new KThread(new NonFatalErrorTest(1)).setName("forked thread").fork();
-        new NonFatalErrorTest(0).run();
+
+        boolean[][] newYieldData = {
+            {false},
+            {false},
+            {true}
+        };
+        KThread.yieldData = newYieldData;
+        int[] newYieldCount = {0,0,0};
+        KThread.yieldCount = newYieldCount;
+
+        new KThread(new DLLNonFatalErrorTest(1)).setName("forked thread").fork();
+        new DLLNonFatalErrorTest(0).run();
+    }
+
+    /**
+    * Creates a mutual exclusion test for the BoundedBuffer
+    */
+    public static void BBuffer_MutualExclusionTest(){
+        Lib.debug(dbgThread, "Enter KThread.BBuffer_MutualExclusionTest");
+
+        boolean[][] newYieldData = {
+            {true, false}
+        };
+        KThread.yieldData = newYieldData;
+        int[] newYieldCount = {0};
+        KThread.yieldCount = newYieldCount;
+
+        new KThread(new BBufferMutualExclusionTest(1)).setName("forked thread").fork();
+        new BBufferMutualExclusionTest(0).run();
+    }
+
+    /**
+    * Creates an underflow test for the BoundedBuffer
+    */
+    public static void BBuffer_UnderflowTest(){
+        Lib.debug(dbgThread, "Enter KThread.BBuffer_UnderflowTest");
+
+        boolean[][] newYieldData = {
+            {false}
+        };
+        KThread.yieldData = newYieldData;
+        int[] newYieldCount = {0};
+        KThread.yieldCount = newYieldCount;
+
+        new KThread(new BBufferUnderflowTest(1)).setName("forked thread").fork();
+        new BBufferUnderflowTest(0).run();
+    }
+
+    /**
+    * Creates an overflow test for the BoundedBuffer
+    */
+    public static void BBuffer_OverflowTest(){
+        Lib.debug(dbgThread, "Enter KThread.BBuffer_OverflowTest");
+
+        boolean[][] newYieldData = {
+            {false, false, false}
+        };
+        KThread.yieldData = newYieldData;
+        int[] newYieldCount = {0};
+        KThread.yieldCount = newYieldCount;
+
+        new KThread(new BBufferOverflowTest(1)).setName("forked thread").fork();
+        new BBufferOverflowTest(0).run();
     }
 
     private static final char dbgThread = 't';

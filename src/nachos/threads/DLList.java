@@ -5,54 +5,21 @@ public class DLList
     private DLLElement first;  // pointer to first node
     private DLLElement last;   // pointer to last node
     private int size;          // number of nodes in list
-
-    // project 1 instance vars
-    
-    // fatal error interleaving
-    static boolean[][] yieldData = {
-        {true,false},
-        {true,false}
-    };
-    static int[] yieldCount = {0,0};
-
-    // non fatal error interleaving
-    // static boolean[][] yieldData = {
-    //     {false},
-    //     {false},
-    //     {true}
-    // };
-    // static int[] yieldCount = {0,0,0};
+    private Lock lock;         // class lock object
+    private Condition2 fullList; // Condition2 var to check when list has contents
 
 
     /**
      * Creates an empty sorted doubly-linked list.
      */ 
     public DLList() {
+        lock = new Lock();
+        fullList = new Condition2(lock);
         first = null;
         last = null;
         size = 0;
     }
 
-    /**
-    * Given this unique location, yield the
-    * current thread if it ought to.  It knows
-    * to do this if yieldData[i][loc] is true, where
-    * i is the number of times that this function
-    * has already been called from this location.
-    *
-    * @param loc  unique location. Every call to
-    *             yieldIfShould that you
-    *             place in your DLList code should
-    *             have a different loc number.
-    */
-    public static void yieldIfShould(int loc) {
-        if (yieldData[loc][yieldCount[loc]]) {
-            yieldCount[loc] += 1;
-            KThread.currentThread().yield();
-        } else {
-            yieldCount[loc] += 1;
-        }
-    }
 
 
     /**
@@ -63,6 +30,8 @@ public class DLList
      */
     public void prepend(Object item) {
         DLLElement newNode;
+
+        lock.acquire();
         if (isEmpty()) {
             newNode = new DLLElement(item, 0);
             last = newNode;
@@ -74,6 +43,9 @@ public class DLList
 
         first = newNode;
         size += 1;
+
+        fullList.wake();
+        lock.release();
     }
 
     /**
@@ -83,29 +55,34 @@ public class DLList
      * @return the data stored at the head of the list or null if list empty
      */
     public Object removeHead() {
-        if (isEmpty()) {
-            return null;
-        } else {
-            Object toReturn = first.data;
+        lock.acquire();
 
-            this.yieldIfShould(0);
-
-            first = first.next;
-
-            this.yieldIfShould(1);
-
-            size -= 1;
-
-            if (!isEmpty()) {
-                first.prev = null;
-            } else {
-                this.yieldIfShould(2);
-                last = null;
-            }
-            return toReturn;
+        while (isEmpty()) {
+            fullList.sleep();
         }
 
+        Object toReturn = first.data;
+
+        KThread.yieldIfShould(0);
+
+        first = first.next;
+
+        KThread.yieldIfShould(1);
+
+        size -= 1;
+
+        if (!isEmpty()) {
+            first.prev = null;
+        } else {
+            KThread.yieldIfShould(2);
+            last = null;
+        }
+
+        lock.release();
+
+        return toReturn;
         
+
     }
 
     /**
@@ -114,7 +91,15 @@ public class DLList
      * @return true iff the list is empty.
      */
     public boolean isEmpty() {
-        return first == null;
+        if (lock.isHeldByCurrentThread()) {
+            return first == null;
+        }
+ 
+        lock.acquire();
+        Boolean emptyBool = first == null;
+        lock.release();
+
+        return emptyBool;
     }
 
     /**
@@ -122,7 +107,11 @@ public class DLList
      * @return
      */
     public int size() {
-        return size;
+        lock.acquire();
+        int currSize = size;
+        lock.release();
+
+        return currSize;
     }
 
 
@@ -131,6 +120,8 @@ public class DLList
      */
     public void insert(Object item, Integer sortKey) {
         DLLElement newNode = new DLLElement(item, sortKey);
+
+        lock.acquire();
         if (isEmpty()) {
             last = newNode;
             first = newNode;
@@ -163,6 +154,9 @@ public class DLList
 
         size += 1;
 
+        fullList.wake();
+        lock.release();
+
     }
 
 
@@ -172,7 +166,10 @@ public class DLList
      * @return list elements in order
      */
     public String toString() {
+        lock.acquire();
+
         if (isEmpty()) {
+            lock.release();
             return "()";
         } else {
             String toReturn = "(" + first.toString();
@@ -182,8 +179,12 @@ public class DLList
                 currNode = currNode.next;
             }
             toReturn += ")";
+            lock.release();
+
             return toReturn;
         }
+
+        
 
     }
 
@@ -193,7 +194,10 @@ public class DLList
      * @return list elements in backwards order
      */
     public String reverseToString(){
+        lock.acquire();
+
         if (isEmpty()) {
+            lock.release();
             return "()";
         } else {
             String toReturn = "(" + last.toString();
@@ -203,16 +207,26 @@ public class DLList
                 currNode = currNode.prev;
             }
             toReturn += ")";
+
+            lock.release();
             return toReturn;
         }
     }
     
     public String getFirst() {
-        return first + "";
+        lock.acquire();
+        String currFirst = first + "";
+        lock.release();
+
+        return currFirst;
     }
 
     public String getLast() {
-        return last + "";
+        lock.acquire();
+        String currLast = last + "";
+        lock.release();
+        
+        return currLast;
     }
 
     /**
