@@ -9,7 +9,10 @@
             "name": "Launch with Arguments Prompt",
             "request": "launch",
             "mainClass": "nachos.machine.Machine",
-            "args": "-[] src/nachos/proj1/nachos.conf"
+            // "args": "-[] src/nachos/proj2/nachos.conf"
+            "cwd": "/Users/apple/Documents/UnionCourses/CSC335/nachos_proj_1/src/nachos/proj2/",
+            "args": "-d ac –x halt.coff"
+            
         },
         {
             "type": "java",

@@ -54,7 +54,7 @@ public class ThreadedKernel extends Kernel {
 
     // KThread.BBuffer_MutualExclusionTest();
     // KThread.BBuffer_UnderflowTest();
-    KThread.BBuffer_OverflowTest();
+    // KThread.BBuffer_OverflowTest();
 
 	Semaphore.selfTest();
 	SynchList.selfTest();
