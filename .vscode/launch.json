@@ -11,7 +11,7 @@
             "mainClass": "nachos.machine.Machine",
             // "args": "-[] src/nachos/proj2/nachos.conf"
             "cwd": "/Users/apple/Documents/UnionCourses/CSC335/nachos_proj_1/src/nachos/proj2/",
-            "args": "-d ac –x halt.coff"
+            "args": "-d ac –x power.coff"
             
         },
         {

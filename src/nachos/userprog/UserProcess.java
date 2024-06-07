@@ -143,8 +143,11 @@ public class UserProcess {
     public int readVirtualMemory(int vaddr, byte[] data, int offset,
 				 int length) {
 	Lib.assertTrue(offset >= 0 && length >= 0 && offset+length <= data.length);
+    
 
+   
 	byte[] memory = Machine.processor().getMemory();
+    
 
     // PITFALL ALERT: the length parameter tells you how much to transfer. This could be less than a page's amount of data, a single page's amount of data, or more than a page's amount of data. That means you need to copy a page at a time, remembering that the first and last pages you copy may not be whole pages. Make sure to ask me if you don't understand this!
 
@@ -171,15 +174,23 @@ public class UserProcess {
     // // compute amount
     int amount = Math.min(length, memory.length-vaddr);
 
+    
+
     while (length > 0) {
+        
 
         // get frame number from page table
-        int frameNum;
+        int frameNum=0;
         for (int i=0; i<pageTable.length; i++) {
+            
             if (pageTable[i].vpn == firstPage) {
-                frameNum = pageTable[i].ppn;
+                
+                frameNum = pageTable[i].ppn; // 59
+                
             }
         }
+
+        
 
         // compute address to start reading from
         int frameAddr = Processor.makeAddress(frameNum,pageOffset);
@@ -188,26 +199,40 @@ public class UserProcess {
 
         // compute last address in frame
         int frameEndAddr = frameAddr;
-        while ((frameEndAddr % 1024) > 1023) {
+        while ((frameEndAddr % 1024) < 1023) {
             frameEndAddr += 1;
         }
 
+        
+
         // reading from one page only
         if ( (frameAddr + length) <= frameEndAddr) {
+            // System.out.println(memory[frameAddr+1]);
             // int amount = Math.min(length, memory.length-vaddr);
             System.arraycopy(memory, frameAddr ,data, offset, length);
             length = 0;
+            // System.out.println(data[offset]);
+            // System.out.println(memory[frameAddr]);
+            // System.out.println(data[offset+2]);
+            // System.out.println(memory[frameAddr+2]);
+
+            
         } 
 
         // reading across multiple pages
         else if ((frameAddr + length) > frameEndAddr) {
             int tempLength = frameEndAddr - frameAddr;
             System.arraycopy(memory, frameAddr ,data, offset, tempLength);
+            System.out.println("read2");
             length -= tempLength;
             offset += tempLength;
             firstPage += 1;
             pageOffset = 0;
+
+            
         }
+
+        // break;
 
     }
 
@@ -216,7 +241,7 @@ public class UserProcess {
 
 	// int amount = Math.min(length, memory.length-vaddr);
 	// System.arraycopy(memory, vaddr, data, offset, amount);
-
+    
 	return amount;
     }
 
@@ -267,7 +292,7 @@ public class UserProcess {
     while (length > 0) {
 
         // get frame number from page table
-        int frameNum;
+        int frameNum=0;
         for (int i=0; i<pageTable.length; i++) {
             if (pageTable[i].vpn == firstPage) {
                 frameNum = pageTable[i].ppn;
@@ -281,7 +306,7 @@ public class UserProcess {
 
         // compute last address in frame
         int frameEndAddr = frameAddr;
-        while ((frameEndAddr % 1024) > 1023) {
+        while ((frameEndAddr % 1024) < 1023) {
             frameEndAddr += 1;
         }
 
@@ -301,6 +326,8 @@ public class UserProcess {
             firstPage += 1;
             pageOffset = 0;
         }
+
+        
 
     }
 
@@ -420,13 +447,13 @@ public class UserProcess {
 	    return false;
 	}
 
-    // ???? create new table or use the old table??
-    // TranslationEntry[] aPageTable = new TranslationEntry[numPages];
-    pageTable = new TranslationEntry[numPages];
-    for (int i=0; i<numPages; i++)
-    pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
+
+    // pageTable = new TranslationEntry[numPages];
+    // for (int i=0; i<numPages; i++)
+    // pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
     
 	// load sections
+    int index = 0;
 	for (int s=0; s<coff.getNumSections(); s++) {
 	    CoffSection section = coff.getSection(s);
 	    
@@ -438,14 +465,17 @@ public class UserProcess {
 
 		// for now, just assume virtual addresses=physical addresses
 		// section.loadPage(i, vpn);
-        pageTable[i] = new TranslationEntry(vpn, myFrames[i],true,section.isReadOnly(),false,false);
+        pageTable[index] = new TranslationEntry(vpn, myFrames[index],true,section.isReadOnly(),false,false);
 
         // System.out.print(i + " ");
         // System.out.println(vpn);
-        section.loadPage(vpn, myFrames[i]);
-        System.out.println("Page: " + vpn + "=>" + myFrames[i]);
+        System.out.println("Page: " + vpn + "=>" + myFrames[index]);
+        section.loadPage(i, myFrames[index]);
+        index++;
+        
 	    }
         // ???? Make the appropriate number of page table entries for the stack and the arguments to the function
+            
 
         
 	}
@@ -457,12 +487,12 @@ public class UserProcess {
      * Release any resources allocated by <tt>loadSections()</tt>.
      */
     protected void unloadSections() {
-        // coff.close();
+        coff.close();
 
         // free up frames
-        // for(int i=0; i < pageTable.length; i++) {
-        //     UserKernel.releasePage(pageTable[i].ppn);
-        // }
+        for(int i=0; i < pageTable.length; i++) {
+            UserKernel.releasePage(pageTable[i].ppn);
+        }
 
     }    
 
@@ -498,6 +528,54 @@ public class UserProcess {
 	
 	Lib.assertNotReached("Machine.halt() did not halt machine!");
 	return 0;
+    }
+
+    /**
+     * See the full Javadocs in syscall.h.
+     * This version of handleWrite only handles printf!
+     */
+    private int handleWrite(int fileDescriptor, int bufferAddr, int count){
+        OpenFile file = UserKernel.console.openForWriting();
+        if (!(bufferAddr >= 0 && count >= 0)) {
+            Lib.debug(dbgProcess, "bufferAddr and count should bigger then zero");
+            return -1; 
+        }
+
+        byte[] buf = new byte[count];
+        int length = readVirtualMemory(bufferAddr, buf, 0, count); 
+        length = file.write(buf, 0, length);
+        return length;
+
+    }
+
+    /**
+    * See the full Javadocs in syscall.h.
+    * This version only handles reading from the console, not from any files! */
+    private int handleRead(int fileDescriptor, int buffer, int count) {
+        
+        OpenFile file = UserKernel.console.openForReading();
+        if (!(buffer >= 0 && count >= 0)) {
+            Lib.debug(dbgProcess, "buffer and count should bigger then zero");
+            return -1; 
+        }
+        byte[] buf = new byte[count];
+
+        int length = file.read(buf, 0, count);
+
+        if (length == -1) {
+            Lib.debug(dbgProcess, "Fail to read from file");
+            return -1; 
+        }
+        
+        length = writeVirtualMemory(buffer, buf, 0, length); 
+        
+        return length;
+    }
+
+    private int handleExit() {
+        unloadSections();
+        Kernel.kernel.terminate();
+        return 0;
     }
 
 
@@ -545,6 +623,16 @@ public class UserProcess {
 	switch (syscall) {
 	case syscallHalt:
 	    return handleHalt();
+
+    case syscallRead:
+        return handleRead(a0, a1, a2);
+
+    case syscallWrite:
+        // System.out.println(a0 + " " + a1 + " " + a2 + " " + a3);
+        return handleWrite(a0, a1, a2);
+
+    case syscallExit:
+        return handleExit();
 
 
 	default:
