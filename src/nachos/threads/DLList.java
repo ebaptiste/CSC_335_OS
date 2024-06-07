@@ -63,18 +63,18 @@ public class DLList
 
         Object toReturn = first.data;
 
-        KThread.yieldIfShould(0);
+        // KThread.yieldIfShould(0);
 
         first = first.next;
 
-        KThread.yieldIfShould(1);
+        // KThread.yieldIfShould(1);
 
         size -= 1;
 
         if (!isEmpty()) {
             first.prev = null;
         } else {
-            KThread.yieldIfShould(2);
+            // KThread.yieldIfShould(2);
             last = null;
         }
 

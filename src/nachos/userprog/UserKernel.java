@@ -23,13 +23,13 @@ public class UserKernel extends ThreadedKernel {
 	super.initialize(args);
 
 	console = new SynchConsole(Machine.console());
-    // int numPhysPages = Machine.processor().getNumPhysPages();
+    int numPhysPages = Machine.processor().getNumPhysPages();
 
-    // freeFrames = new DLList();
+    freeFrames = new DLList();
 
-    // for (int i=0; i<numPhysPages; i++) {
-    //     freeFrames.prepend(i);
-    // }
+    for (int i=0; i<numPhysPages; i++) {
+        freeFrames.prepend(i);
+    }
 	
 	Machine.processor().setExceptionHandler(new Runnable() {
 		public void run() { exceptionHandler(); }
@@ -37,37 +37,37 @@ public class UserKernel extends ThreadedKernel {
     }
 
 
-    // /**
-    // * return a list of <requested> free frame numbers that can be used * for a process
-    // *
-    // * @param requested number of free frames requested
-    // * @return array of frame numbers that the process can use or null * if request cannot be fulfilled
-    // */
-    // public static int[] allocatePages(int requested) {
-    //     if (freeFrames.size() < requested) {
-    //         return null;
-    //     } else {
-    //         int[] frameNums = new int[requested];
-    //         for (int i=0; i<requested; i++) {
-    //             frameNums[i] = (int)freeFrames.removeHead();
-    //         }
+    /**
+    * return a list of <requested> free frame numbers that can be used * for a process
+    *
+    * @param requested number of free frames requested
+    * @return array of frame numbers that the process can use or null * if request cannot be fulfilled
+    */
+    public static int[] allocatePages(int requested) {
+        if (freeFrames.size() < requested) {
+            return null;
+        } else {
+            int[] frameNums = new int[requested];
+            for (int i=0; i<requested; i++) {
+                frameNums[i] = (int)freeFrames.removeHead();
+            }
 
-    //         return frameNums;
-    //     }
+            return frameNums;
+        }
         
-    // }
-    //     /**
-    //      * put frameNumber back in the free frames list
-    //      */
-    // public static void releasePage(int frameNumber) {
-    //     freeFrames.prepend(frameNumber);
-    // }
+    }
+        /**
+         * put frameNumber back in the free frames list
+         */
+    public static void releasePage(int frameNumber) {
+        freeFrames.prepend(frameNumber);
+    }
 
     /**
      * Test the console device.
      */	
-    // public void selfTest() {
-	// super.selfTest();
+    public void selfTest() {
+	super.selfTest();
 
 	// System.out.println("Testing the console device. Typed characters");
 	// System.out.println("will be echoed until q is typed.");
@@ -81,7 +81,7 @@ public class UserKernel extends ThreadedKernel {
 	// while (c != 'q');
 
 	// System.out.println("");
-    // }
+    }
 
     /**
      * Returns the current process.
@@ -147,5 +147,5 @@ public class UserKernel extends ThreadedKernel {
     // dummy variables to make javac smarter
     private static Coff dummy1 = null;
 
-    // public static DLList freeFrames;
+    public static DLList freeFrames;
 }

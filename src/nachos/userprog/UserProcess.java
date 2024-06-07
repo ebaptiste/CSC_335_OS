@@ -24,6 +24,11 @@ public class UserProcess {
      */
     public UserProcess() {
 	int numPhysPages = Machine.processor().getNumPhysPages();
+    pageTable = new TranslationEntry[numPhysPages];
+	for (int i=0; i<numPhysPages; i++)
+	    pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
+    }
+
 	// pageTable = new TranslationEntry[numPhysPages];
     // do not need to init the page table to be this big
     // only need to page table to have entries for code/data, stack, and arguments
@@ -158,59 +163,59 @@ public class UserProcess {
 	//     return 0;
 
     // get first virtual page
-    // int firstPage = Processor.pageFromAddress(vaddr);
+    int firstPage = Processor.pageFromAddress(vaddr);
 
     // // get virtual page offset
-    // int pageOffset = Processor.offsetFromAddress(vaddr);
+    int pageOffset = Processor.offsetFromAddress(vaddr);
 
     // // compute amount
-    // int amount = Math.min(length, memory.length-vaddr);
+    int amount = Math.min(length, memory.length-vaddr);
 
-    // while (length > 0) {
+    while (length > 0) {
 
-    //     // get frame number from page table
-    //     int frameNum;
-    //     for (int i=0; i<pageTable.length; i++) {
-    //         if (pageTable[i].vpn == firstPage) {
-    //             frameNum = pageTable[i].ppn;
-    //         }
-    //     }
+        // get frame number from page table
+        int frameNum;
+        for (int i=0; i<pageTable.length; i++) {
+            if (pageTable[i].vpn == firstPage) {
+                frameNum = pageTable[i].ppn;
+            }
+        }
 
-    //     // compute address to start reading from
-    //     int frameAddr = Processor.makeAddress(frameNum,pageOffset);
-    //     if (frameAddr < 0 || frameAddr >= memory.length)
-	//         return 0;
+        // compute address to start reading from
+        int frameAddr = Processor.makeAddress(frameNum,pageOffset);
+        if (frameAddr < 0 || frameAddr >= memory.length)
+	        return 0;
 
-    //     // compute last address in frame
-    //     int frameEndAddr = frameAddr;
-    //     while ((frameEndAddr % 1024) > 1023) {
-    //         frameEndAddr += 1;
-    //     }
+        // compute last address in frame
+        int frameEndAddr = frameAddr;
+        while ((frameEndAddr % 1024) > 1023) {
+            frameEndAddr += 1;
+        }
 
-    //     // reading from one page only
-    //     if ( (frameAddr + length) <= frameEndAddr) {
-    //         // int amount = Math.min(length, memory.length-vaddr);
-    //         System.arraycopy(memory, frameAddr ,data, offset, length);
-    //         length = 0;
-    //     } 
+        // reading from one page only
+        if ( (frameAddr + length) <= frameEndAddr) {
+            // int amount = Math.min(length, memory.length-vaddr);
+            System.arraycopy(memory, frameAddr ,data, offset, length);
+            length = 0;
+        } 
 
-    //     // reading across multiple pages
-    //     else if ((frameAddr + length) > frameEndAddr) {
-    //         int tempLength = frameEndAddr - frameAddr;
-    //         System.arraycopy(memory, frameAddr ,data, offset, tempLength);
-    //         length -= tempLength;
-    //         offset += tempLength;
-    //         firstPage += 1;
-    //         pageOffset = 0;
-    //     }
+        // reading across multiple pages
+        else if ((frameAddr + length) > frameEndAddr) {
+            int tempLength = frameEndAddr - frameAddr;
+            System.arraycopy(memory, frameAddr ,data, offset, tempLength);
+            length -= tempLength;
+            offset += tempLength;
+            firstPage += 1;
+            pageOffset = 0;
+        }
 
-    // }
+    }
 
-    if (vaddr < 0 || vaddr >= memory.length)
-	    return 0;
+    // if (vaddr < 0 || vaddr >= memory.length)
+	//     return 0;
 
-	int amount = Math.min(length, memory.length-vaddr);
-	System.arraycopy(memory, vaddr, data, offset, amount);
+	// int amount = Math.min(length, memory.length-vaddr);
+	// System.arraycopy(memory, vaddr, data, offset, amount);
 
 	return amount;
     }
@@ -248,61 +253,63 @@ public class UserProcess {
 
 	byte[] memory = Machine.processor().getMemory();
 
+	// for now, just assume that virtual addresses equal physical addresses
+
     // // get first virtual page
-    // int firstPage = Processor.pageFromAddress(vaddr);
+    int firstPage = Processor.pageFromAddress(vaddr);
 
     // // get virtual page offset
-    // int pageOffset = Processor.offsetFromAddress(vaddr);
+    int pageOffset = Processor.offsetFromAddress(vaddr);
 
     // // compute amount
-    // int amount = Math.min(length, memory.length-vaddr);
-
-    // while (length > 0) {
-
-    //     // get frame number from page table
-    //     int frameNum;
-    //     for (int i=0; i<pageTable.length; i++) {
-    //         if (pageTable[i].vpn == firstPage) {
-    //             frameNum = pageTable[i].ppn;
-    //         }
-    //     }
-
-    //     // compute address to start reading from
-    //     int frameAddr = Processor.makeAddress(frameNum,pageOffset);
-    //     if (frameAddr < 0 || frameAddr >= memory.length)
-    //         return 0;
-
-    //     // compute last address in frame
-    //     int frameEndAddr = frameAddr;
-    //     while ((frameEndAddr % 1024) > 1023) {
-    //         frameEndAddr += 1;
-    //     }
-
-    //     // reading from one page only
-    //     if ( (frameAddr + length) <= frameEndAddr) {
-    //         // int amount = Math.min(length, memory.length-vaddr);
-    //         System.arraycopy(data, offset, memory, frameAddr, length);
-    //         length = 0;
-    //     } 
-
-    //     // reading across multiple pages
-    //     else if ((frameAddr + length) > frameEndAddr) {
-    //         int tempLength = frameEndAddr - frameAddr;
-    //         System.arraycopy(data, offset, memory, frameAddr, tempLength);
-    //         length -= tempLength;
-    //         offset += tempLength;
-    //         firstPage += 1;
-    //         pageOffset = 0;
-    //     }
-
-    // }
-
-
-	if (vaddr < 0 || vaddr >= memory.length)
-        return 0;
-
     int amount = Math.min(length, memory.length-vaddr);
-    System.arraycopy(data, offset, memory, vaddr, amount);
+
+    while (length > 0) {
+
+        // get frame number from page table
+        int frameNum;
+        for (int i=0; i<pageTable.length; i++) {
+            if (pageTable[i].vpn == firstPage) {
+                frameNum = pageTable[i].ppn;
+            }
+        }
+
+        // compute address to start reading from
+        int frameAddr = Processor.makeAddress(frameNum,pageOffset);
+        if (frameAddr < 0 || frameAddr >= memory.length)
+            return 0;
+
+        // compute last address in frame
+        int frameEndAddr = frameAddr;
+        while ((frameEndAddr % 1024) > 1023) {
+            frameEndAddr += 1;
+        }
+
+        // reading from one page only
+        if ( (frameAddr + length) <= frameEndAddr) {
+            // int amount = Math.min(length, memory.length-vaddr);
+            System.arraycopy(data, offset, memory, frameAddr, length);
+            length = 0;
+        } 
+
+        // reading across multiple pages
+        else if ((frameAddr + length) > frameEndAddr) {
+            int tempLength = frameEndAddr - frameAddr;
+            System.arraycopy(data, offset, memory, frameAddr, tempLength);
+            length -= tempLength;
+            offset += tempLength;
+            firstPage += 1;
+            pageOffset = 0;
+        }
+
+    }
+
+
+	// if (vaddr < 0 || vaddr >= memory.length)
+    //     return 0;
+
+    // int amount = Math.min(length, memory.length-vaddr);
+    // System.arraycopy(data, offset, memory, vaddr, amount);
 
 	return amount;
     }
@@ -403,11 +410,11 @@ public class UserProcess {
      * @return	<tt>true</tt> if the sections were successfully loaded.
      */
     protected boolean loadSections() {
-    // int[] myFrames = UserKernel.allocatePages(numPages);
-    // System.out.println("Number of pages allocated to process: " + myFrames.length);
+    int[] myFrames = UserKernel.allocatePages(numPages);
+    System.out.println("Number of pages allocated to process: " + myFrames.length);
 
-	if (numPages > Machine.processor().getNumPhysPages()) {
-    // if (myFrames == null) {
+	// if (numPages > Machine.processor().getNumPhysPages()) {
+    if (myFrames == null) {
 	    coff.close();
 	    Lib.debug(dbgProcess, "\tinsufficient physical memory");
 	    return false;
@@ -415,7 +422,9 @@ public class UserProcess {
 
     // ???? create new table or use the old table??
     // TranslationEntry[] aPageTable = new TranslationEntry[numPages];
-    // pageTable = new TranslationEntry[numPages];
+    pageTable = new TranslationEntry[numPages];
+    for (int i=0; i<numPages; i++)
+    pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
     
 	// load sections
 	for (int s=0; s<coff.getNumSections(); s++) {
@@ -429,10 +438,12 @@ public class UserProcess {
 
 		// for now, just assume virtual addresses=physical addresses
 		// section.loadPage(i, vpn);
-        // pageTable[i] = new TranslationEntry(vpn, myFrames[i],true,section.isReadOnly(),false,false);
+        pageTable[i] = new TranslationEntry(vpn, myFrames[i],true,section.isReadOnly(),false,false);
 
-        // section.loadPage(myFrames[i], vpn);
-        // System.out.println("Page: " + vpn + "=>" + myFrames[i]);
+        // System.out.print(i + " ");
+        // System.out.println(vpn);
+        section.loadPage(vpn, myFrames[i]);
+        System.out.println("Page: " + vpn + "=>" + myFrames[i]);
 	    }
         // ???? Make the appropriate number of page table entries for the stack and the arguments to the function
 
