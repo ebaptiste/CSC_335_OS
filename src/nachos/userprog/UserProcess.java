@@ -24,10 +24,18 @@ public class UserProcess {
      */
     public UserProcess() {
 	int numPhysPages = Machine.processor().getNumPhysPages();
-	pageTable = new TranslationEntry[numPhysPages];
-	for (int i=0; i<numPhysPages; i++)
-	    pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
-    }
+	// pageTable = new TranslationEntry[numPhysPages];
+    // do not need to init the page table to be this big
+    // only need to page table to have entries for code/data, stack, and arguments
+    // code+data = x
+    // stack = 8 pages
+    // arguments = i page
+    // final page table should be 9 + # of pages in code/data pages long
+    // the final page number is held in numPages variable
+    // do not allocate page tables here, just allocate it when loading sections.
+	// for (int i=0; i<numPhysPages; i++)
+	//     pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
+    // }
     
     /**
      * Allocate and return a new process of the correct class. The class name
@@ -132,9 +140,73 @@ public class UserProcess {
 	Lib.assertTrue(offset >= 0 && length >= 0 && offset+length <= data.length);
 
 	byte[] memory = Machine.processor().getMemory();
+
+    // PITFALL ALERT: the length parameter tells you how much to transfer. This could be less than a page's amount of data, a single page's amount of data, or more than a page's amount of data. That means you need to copy a page at a time, remembering that the first and last pages you copy may not be whole pages. Make sure to ask me if you don't understand this!
+
+    // when you get to the end of a page, you have to find where the new page lives in physical memory.
+    // you can calcuate wether you are reading across pages by using the vpnoffset, the length to read, and the fact that pages are 1024 bytes
+    // we can use the length to calcuate how many full pages you need to read. if its another full page (length-1024>0) then read the full page and
+    // check how much length is left.
+    // after you get to the last page, meaning length < 1024, then you just read from the start of the page to the length,
+    // using length as your offset
+
+    //  pages are 1024 bytes
+    // so page 0 is from: 0 => 1023
 	
 	// for now, just assume that virtual addresses equal physical addresses
-	if (vaddr < 0 || vaddr >= memory.length)
+	// if (vaddr < 0 || vaddr >= memory.length)
+	//     return 0;
+
+    // get first virtual page
+    // int firstPage = Processor.pageFromAddress(vaddr);
+
+    // // get virtual page offset
+    // int pageOffset = Processor.offsetFromAddress(vaddr);
+
+    // // compute amount
+    // int amount = Math.min(length, memory.length-vaddr);
+
+    // while (length > 0) {
+
+    //     // get frame number from page table
+    //     int frameNum;
+    //     for (int i=0; i<pageTable.length; i++) {
+    //         if (pageTable[i].vpn == firstPage) {
+    //             frameNum = pageTable[i].ppn;
+    //         }
+    //     }
+
+    //     // compute address to start reading from
+    //     int frameAddr = Processor.makeAddress(frameNum,pageOffset);
+    //     if (frameAddr < 0 || frameAddr >= memory.length)
+	//         return 0;
+
+    //     // compute last address in frame
+    //     int frameEndAddr = frameAddr;
+    //     while ((frameEndAddr % 1024) > 1023) {
+    //         frameEndAddr += 1;
+    //     }
+
+    //     // reading from one page only
+    //     if ( (frameAddr + length) <= frameEndAddr) {
+    //         // int amount = Math.min(length, memory.length-vaddr);
+    //         System.arraycopy(memory, frameAddr ,data, offset, length);
+    //         length = 0;
+    //     } 
+
+    //     // reading across multiple pages
+    //     else if ((frameAddr + length) > frameEndAddr) {
+    //         int tempLength = frameEndAddr - frameAddr;
+    //         System.arraycopy(memory, frameAddr ,data, offset, tempLength);
+    //         length -= tempLength;
+    //         offset += tempLength;
+    //         firstPage += 1;
+    //         pageOffset = 0;
+    //     }
+
+    // }
+
+    if (vaddr < 0 || vaddr >= memory.length)
 	    return 0;
 
 	int amount = Math.min(length, memory.length-vaddr);
@@ -175,13 +247,62 @@ public class UserProcess {
 	Lib.assertTrue(offset >= 0 && length >= 0 && offset+length <= data.length);
 
 	byte[] memory = Machine.processor().getMemory();
-	
-	// for now, just assume that virtual addresses equal physical addresses
-	if (vaddr < 0 || vaddr >= memory.length)
-	    return 0;
 
-	int amount = Math.min(length, memory.length-vaddr);
-	System.arraycopy(data, offset, memory, vaddr, amount);
+    // // get first virtual page
+    // int firstPage = Processor.pageFromAddress(vaddr);
+
+    // // get virtual page offset
+    // int pageOffset = Processor.offsetFromAddress(vaddr);
+
+    // // compute amount
+    // int amount = Math.min(length, memory.length-vaddr);
+
+    // while (length > 0) {
+
+    //     // get frame number from page table
+    //     int frameNum;
+    //     for (int i=0; i<pageTable.length; i++) {
+    //         if (pageTable[i].vpn == firstPage) {
+    //             frameNum = pageTable[i].ppn;
+    //         }
+    //     }
+
+    //     // compute address to start reading from
+    //     int frameAddr = Processor.makeAddress(frameNum,pageOffset);
+    //     if (frameAddr < 0 || frameAddr >= memory.length)
+    //         return 0;
+
+    //     // compute last address in frame
+    //     int frameEndAddr = frameAddr;
+    //     while ((frameEndAddr % 1024) > 1023) {
+    //         frameEndAddr += 1;
+    //     }
+
+    //     // reading from one page only
+    //     if ( (frameAddr + length) <= frameEndAddr) {
+    //         // int amount = Math.min(length, memory.length-vaddr);
+    //         System.arraycopy(data, offset, memory, frameAddr, length);
+    //         length = 0;
+    //     } 
+
+    //     // reading across multiple pages
+    //     else if ((frameAddr + length) > frameEndAddr) {
+    //         int tempLength = frameEndAddr - frameAddr;
+    //         System.arraycopy(data, offset, memory, frameAddr, tempLength);
+    //         length -= tempLength;
+    //         offset += tempLength;
+    //         firstPage += 1;
+    //         pageOffset = 0;
+    //     }
+
+    // }
+
+
+	if (vaddr < 0 || vaddr >= memory.length)
+        return 0;
+
+    int amount = Math.min(length, memory.length-vaddr);
+    System.arraycopy(data, offset, memory, vaddr, amount);
 
 	return amount;
     }
@@ -282,12 +403,20 @@ public class UserProcess {
      * @return	<tt>true</tt> if the sections were successfully loaded.
      */
     protected boolean loadSections() {
+    // int[] myFrames = UserKernel.allocatePages(numPages);
+    // System.out.println("Number of pages allocated to process: " + myFrames.length);
+
 	if (numPages > Machine.processor().getNumPhysPages()) {
+    // if (myFrames == null) {
 	    coff.close();
 	    Lib.debug(dbgProcess, "\tinsufficient physical memory");
 	    return false;
 	}
 
+    // ???? create new table or use the old table??
+    // TranslationEntry[] aPageTable = new TranslationEntry[numPages];
+    // pageTable = new TranslationEntry[numPages];
+    
 	// load sections
 	for (int s=0; s<coff.getNumSections(); s++) {
 	    CoffSection section = coff.getSection(s);
@@ -299,8 +428,15 @@ public class UserProcess {
 		int vpn = section.getFirstVPN()+i;
 
 		// for now, just assume virtual addresses=physical addresses
-		section.loadPage(i, vpn);
+		// section.loadPage(i, vpn);
+        // pageTable[i] = new TranslationEntry(vpn, myFrames[i],true,section.isReadOnly(),false,false);
+
+        // section.loadPage(myFrames[i], vpn);
+        // System.out.println("Page: " + vpn + "=>" + myFrames[i]);
 	    }
+        // ???? Make the appropriate number of page table entries for the stack and the arguments to the function
+
+        
 	}
 	
 	return true;
@@ -310,6 +446,13 @@ public class UserProcess {
      * Release any resources allocated by <tt>loadSections()</tt>.
      */
     protected void unloadSections() {
+        // coff.close();
+
+        // free up frames
+        // for(int i=0; i < pageTable.length; i++) {
+        //     UserKernel.releasePage(pageTable[i].ppn);
+        // }
+
     }    
 
     /**
